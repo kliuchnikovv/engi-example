@@ -1,0 +1,64 @@
+name: Go
+
+on: [push]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build
+        run: go build -v ./...
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Test
+        run: go test -v ./...
+
+  documentation:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      # - name: Build documentation
+      #   run: go build -tags docs -v ./...
+
+  notify:
+    name: Notify
+    needs:
+      - build
+      - test
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: martialonline/workflow-status@v2
+        id: check
+      - uses: KlyuchnikovV/telegram-notify@v0.1.9
+        with:
+          chat_id: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          status: ${{ steps.check.outputs.status }}
+          parse_mode: markdown
+          disable_links_preview: true
