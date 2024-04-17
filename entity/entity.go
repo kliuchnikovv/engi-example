@@ -12,3 +12,5 @@ type RequestBody struct {
 	ArrayOfArray [][]float32 `json:"arrayOfArray"`
 	WithoutTag   float64
 }
+
+// TODO: add tag checking

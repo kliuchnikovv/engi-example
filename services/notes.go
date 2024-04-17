@@ -5,11 +5,13 @@ import (
 	"fmt"
 
 	"github.com/KlyuchnikovV/engi"
-	"github.com/KlyuchnikovV/engi/example/entity"
-	"github.com/KlyuchnikovV/engi/parameter"
-	"github.com/KlyuchnikovV/engi/parameter/path"
-	"github.com/KlyuchnikovV/engi/parameter/placing"
-	"github.com/KlyuchnikovV/engi/validate"
+	"github.com/KlyuchnikovV/engi-example/entity"
+	"github.com/KlyuchnikovV/engi/definition/auth"
+	"github.com/KlyuchnikovV/engi/definition/cors"
+	"github.com/KlyuchnikovV/engi/definition/parameter"
+	"github.com/KlyuchnikovV/engi/definition/parameter/path"
+	"github.com/KlyuchnikovV/engi/definition/parameter/placing"
+	"github.com/KlyuchnikovV/engi/definition/validate"
 )
 
 // Example service.
@@ -21,7 +23,8 @@ func (api *NotesAPI) Prefix() string {
 
 func (api *NotesAPI) Middlewares() []engi.Middleware {
 	return []engi.Middleware{
-		engi.UseCORS(engi.AllowedOrigins("*")),
+		cors.AllowedOrigins("*"),
+		auth.Basic("Dave", "IsCrazyAboutNotes"),
 	}
 }
 
@@ -29,11 +32,13 @@ func (api *NotesAPI) Routers() engi.Routes {
 	return engi.Routes{
 		"create": engi.POST(api.Create,
 			parameter.Body(new(entity.NotesRequest)),
+			auth.Basic("Dave", "NotCrazy"),
 		),
 		"get/{id}": engi.GET(api.GetByID,
 			path.Integer("id",
 				validate.AND(validate.Greater(1), validate.Less(10)),
 			),
+			auth.BearerToken("token"),
 		),
 		"{object}/{id}": engi.GET(api.GetByIDFromPath,
 			path.Integer("id"),
@@ -62,8 +67,8 @@ func (api *NotesAPI) GetByID(
 	var id = request.Integer("id", placing.InPath)
 
 	// Do something with id (we will check it)
-	if id < 0 {
-		return response.BadRequest("id can't be negative (got: %d)", id)
+	if id != 5 {
+		return response.BadRequest("id can't be 5 (got: %d)", id)
 	}
 
 	return response.OK(struct {
