@@ -22,3 +22,7 @@ vendor/
 
 # Generated artifacts
 *.json
+app.db
+
+// MacOS files
+.DS_Store

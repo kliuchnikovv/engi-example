@@ -45,8 +45,8 @@ func (api *NotesAPI) Middlewares() []engi.Middleware {
 func (api *NotesAPI) Routers() engi.Routes {
 	return engi.Routes{
 		engi.PST(""): engi.Handle( // Using POST method to create a new note with full address "/notes/".
-			api.Create,                       // Handler to handle this request.
-			parameter.Body(new(entity.Note)), // Body parameter to parse request body into entity.Note.
+			api.Create,                                 // Handler to handle this request.
+			parameter.Body(new(entity.Note)),           // Body parameter to parse request body into entity.Note.
 			middlewares.Description("create new note"), // Description of this route for documentation purposes.
 		),
 		engi.GET(""): engi.Handle(

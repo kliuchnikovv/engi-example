@@ -10,6 +10,21 @@
 
 ## Example application for Engi
 
+### Repo structure
+```
+engi-example
+├── ...
+├── entity        - domain models
+├── services      - API definitions
+│   └── notes.go  - example of service written with Engi
+│   └── tasks.go  - example of service written with Gorilla Mux
+|   └── README.md - comparison of Engi and Gorilla Mux
+├── store         - ORM functions for example
+├── main.go       - defines main function
+└── README.md     - YOU ARE HERE           <--
+
+```
+
 ### Example of usage
 
 The idea of this framework is to create **services**, each of which works with one model.
