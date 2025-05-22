@@ -2,96 +2,159 @@ package services
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
-	"github.com/KlyuchnikovV/engi"
-	"github.com/KlyuchnikovV/engi-example/entity"
-	"github.com/KlyuchnikovV/engi/definition/auth"
-	"github.com/KlyuchnikovV/engi/definition/cors"
-	"github.com/KlyuchnikovV/engi/definition/parameter"
-	"github.com/KlyuchnikovV/engi/definition/parameter/path"
-	"github.com/KlyuchnikovV/engi/definition/parameter/placing"
-	"github.com/KlyuchnikovV/engi/definition/validate"
+	"github.com/kliuchnikovv/engi"
+	"github.com/kliuchnikovv/engi-example/entity"
+	"github.com/kliuchnikovv/engi-example/store"
+	"github.com/kliuchnikovv/engi/definition/middlewares"
+	"github.com/kliuchnikovv/engi/definition/middlewares/auth"
+	"github.com/kliuchnikovv/engi/definition/middlewares/cors"
+	"github.com/kliuchnikovv/engi/definition/parameter"
+	"github.com/kliuchnikovv/engi/definition/parameter/path"
+	"github.com/kliuchnikovv/engi/definition/parameter/placing"
+	"github.com/kliuchnikovv/engi/definition/validate"
+	"gorm.io/gorm"
 )
 
 // Example service.
-type NotesAPI struct{}
+type NotesAPI struct {
+	notesStore store.NoteStore
+}
+
+func NewNotesAPI(notesStore store.NoteStore) *NotesAPI {
+	return &NotesAPI{notesStore: notesStore}
+}
 
 func (api *NotesAPI) Prefix() string {
+	// All requests to this service should start with "/notes".
 	return "notes"
 }
 
 func (api *NotesAPI) Middlewares() []engi.Middleware {
+	// Defines middlewares for all requests to this service.
+	// CORS, auth, etc...
 	return []engi.Middleware{
 		cors.AllowedOrigins("*"),
-		auth.Basic("Dave", "IsCrazyAboutNotes"),
+		cors.AllowedHeaders("*"),
+		cors.AllowedMethods("*"),
+		auth.NoAuth(),
 	}
 }
 
 func (api *NotesAPI) Routers() engi.Routes {
 	return engi.Routes{
-		"create": engi.POST(api.Create,
-			parameter.Body(new(entity.NotesRequest)),
-			auth.Basic("Dave", "NotCrazy"),
+		engi.PST(""): engi.Handle( // Using POST method to create a new note with full address "/notes/".
+			api.Create,                       // Handler to handle this request.
+			parameter.Body(new(entity.Note)), // Body parameter to parse request body into entity.Note.
+			middlewares.Description("create new note"), // Description of this route for documentation purposes.
 		),
-		"get/{id}": engi.GET(api.GetByID,
-			path.Integer("id",
-				validate.AND(validate.Greater(1), validate.Less(10)),
-			),
-			auth.BearerToken("token"),
+		engi.GET(""): engi.Handle(
+			api.List,
+			middlewares.Description("list all notes"),
 		),
-		"{object}/{id}": engi.GET(api.GetByIDFromPath,
-			path.Integer("id"),
-			path.String("object"),
+		engi.GET("{id}"): engi.Handle(
+			api.Get,
+			path.Integer("id", validate.Greater(0)), // Path parameter to be parsed into integer.
+			middlewares.Description("get note by id"),
+		),
+		engi.PUT("{id}"): engi.Handle(
+			api.Update,
+			path.Integer("id", validate.Greater(0)),
+			parameter.Body(new(entity.Note)),
+			middlewares.Description("update note by id"),
+		),
+		engi.DEL("{id}"): engi.Handle(
+			api.Delete,
+			path.Integer("id", validate.Greater(0)),
+			middlewares.Description("delete note by id"),
 		),
 	}
 }
 
 func (api *NotesAPI) Create(
-	_ context.Context,
+	ctx context.Context,
 	request engi.Request,
 	response engi.Response,
 ) error {
-	if body := request.Body(); body != nil {
-		return response.OK(body)
+	var note = request.Body().(*entity.Note)
+
+	if _, err := api.notesStore.GetByID(ctx, note.ID); err == nil {
+		return response.BadRequest("note already exists")
+	}
+
+	if err := api.notesStore.Create(ctx, note); err != nil {
+		return response.InternalServerError(err.Error())
 	}
 
 	return response.Created()
 }
 
-func (api *NotesAPI) GetByID(
-	_ context.Context,
+func (api *NotesAPI) List(
+	ctx context.Context,
+	request engi.Request,
+	response engi.Response,
+) error {
+	notes, err := api.notesStore.List(ctx)
+	if err != nil {
+		return response.InternalServerError(err.Error())
+	}
+
+	return response.OK(notes)
+}
+
+func (api *NotesAPI) Get(
+	ctx context.Context,
 	request engi.Request,
 	response engi.Response,
 ) error {
 	var id = request.Integer("id", placing.InPath)
 
-	// Do something with id (we will check it)
-	if id != 5 {
-		return response.BadRequest("id can't be 5 (got: %d)", id)
+	note, err := api.notesStore.GetByID(ctx, id)
+	if err != nil {
+		return response.NotFound(err.Error())
 	}
 
-	return response.OK(struct {
-		Message string `description:"Response message" json:"message"`
-	}{
-		Message: fmt.Sprintf("got id: '%d'", id),
-	})
+	return response.OK(note)
 }
 
-func (api *NotesAPI) GetByIDFromPath(
-	_ context.Context,
+func (api *NotesAPI) Update(
+	ctx context.Context,
 	request engi.Request,
 	response engi.Response,
 ) error {
 	var (
-		id     = request.Integer("id", placing.InPath)
-		object = request.String("object", placing.InPath)
+		id   = request.Integer("id", placing.InPath)
+		note = request.Body().(*entity.Note)
 	)
 
-	// Do something with id (we will check it)
-	if id < 0 {
-		return response.BadRequest("id can't be negative (got: %d)", id)
+	if _, err := api.notesStore.GetByID(ctx, id); errors.Is(err, gorm.ErrRecordNotFound) {
+		return response.NotFound("note doesn't exists")
 	}
 
-	return response.OK(fmt.Sprintf("got id for object '%s': '%d'", object, id))
+	note.ID = id
+
+	if err := api.notesStore.Update(ctx, note); err != nil {
+		return response.InternalServerError(err.Error())
+	}
+
+	return response.NoContent()
+}
+
+func (api *NotesAPI) Delete(
+	ctx context.Context,
+	request engi.Request,
+	response engi.Response,
+) error {
+	var id = request.Integer("id", placing.InPath)
+
+	if _, err := api.notesStore.GetByID(ctx, id); errors.Is(err, gorm.ErrRecordNotFound) {
+		return response.NotFound("note doesn't exists")
+	}
+
+	if err := api.notesStore.Delete(ctx, id); err != nil {
+		return response.NotFound(err.Error())
+	}
+
+	return response.NoContent()
 }
