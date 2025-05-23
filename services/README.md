@@ -34,22 +34,22 @@ Both services follow the same structure and can serve as example of key advantag
       <td>
         <pre><code class="language-go">
 func (api *NotesAPI) Routers() engi.Routes {
-    return engi.Routes{
-        // ...
-        engi.GET("{id}"): engi.Handle(
-            api.Get,
-            path.Integer("id", validate.Greater(0)),
-            middlewares.Description("get note by id"),
-        ),
-        // ...
-    }
+  return engi.Routes{
+    // ...
+    engi.GET("{id}"): engi.Handle(
+      api.Get,
+      path.Integer("id", validate.Greater(0)),
+      middlewares.Description("get note by id"),
+    ),
+    // ...
+  }
 }
         </code></pre>
       </td>
       <td>
         <pre><code class="language-go">
 func (api *TasksAPI) RegisterRoutes(r *mux.Router) {
-    r.HandleFunc("/tasks/{id:[0-9]+}", api.Get).Methods("GET")
+  r.HandleFunc("/tasks/{id:[0-9]+}", api.Get).Methods("GET")
 }
         </code></pre>
       </td>
@@ -86,8 +86,8 @@ idStr := mux.Vars(r)["id"]
 
 id, err := strconv.ParseInt(idStr, 10, 64)
 if err != nil {
-    http.Error(w, "invalid id", http.StatusBadRequest)
-    return
+  http.Error(w, "invalid id", http.StatusBadRequest)
+  return
 }
         </code></pre>
       </td>
@@ -102,8 +102,8 @@ As shown above, Engi's way of defining parameters is more concise and easier to 
 <table>
   <thead>
     <tr>
-      <th>Использование response.OK</th>
-      <th>Ручная отправка HTTP-ответа</th>
+      <th>Engi</th>
+      <th>Gorilla Mux</th>
     </tr>
   </thead>
   <tbody>

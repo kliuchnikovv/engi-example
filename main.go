@@ -37,8 +37,10 @@ func main() {
 }
 
 func newEngi(db *gorm.DB) error {
+	// Initialize stores
 	noteStore := store.NewNoteStore(db)
 
+	// Initialize Engine
 	var engine = engi.New(":8080",
 		engi.ResponseAsJSON(response.AsIs),
 		engi.WithLogger(slog.NewTextHandler(os.Stdout,
@@ -48,12 +50,14 @@ func newEngi(db *gorm.DB) error {
 		)),
 	)
 
+	// Register routes
 	if err := engine.RegisterServices(
 		services.NewNotesAPI(*noteStore),
 	); err != nil {
 		return err
 	}
 
+	// Start HTTP server
 	return engine.Start()
 }
 
